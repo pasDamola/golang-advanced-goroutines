@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+	"sync"
 )
 
 var (
@@ -53,6 +53,8 @@ func (e *ElectricTruck) UnloadCargo() error {
 // processTruck handles the loading and unloading of a truck
 func processTruck(truck Truck) error {
 
+	fmt.Printf("Started processing %+v\n", truck)
+
 	if err := truck.LoadCargo(); err != nil {
 		return fmt.Errorf("error truck did not load correctly %w", err)
 	}
@@ -60,21 +62,41 @@ func processTruck(truck Truck) error {
 	if err := truck.UnloadCargo(); err != nil {
 		return fmt.Errorf("Error truck did not unload correctly %w", err)
 	}
+
+	fmt.Printf("Finished processing %+v\n", truck)
+	return nil
+}
+
+// processFleet demonstrates concurrent processing of multiple trucks
+func processFleet(trucks []Truck) error {
+	var wg sync.WaitGroup
+
+	for _, t := range trucks {
+		wg.Add(1)
+
+		go func(t Truck) {
+			processTruck(t)
+			wg.Done()
+		}(t)
+	}
+
+	wg.Wait()
+
 	return nil
 }
 
 func main() {
-	truckID := 42
-	anotherTruckID := &truckID
+	fleet := []Truck{
+		&NormalTruck{id: "NT1", cargo: 0},
+		&ElectricTruck{id: "ET1", cargo: 0, battery: 100},
+		&NormalTruck{id: "NT2", cargo: 0},
+		&ElectricTruck{id: "ET2", cargo: 0, battery: 100},
+	}
 
-	log.Println(anotherTruckID)
+	if err := processFleet(fleet); err != nil {
+		fmt.Printf("error processing fleet: %v\n", err)
+		return
+	}
 
-	truckID = 0
-	log.Println(*anotherTruckID)
-
-	// until values are assigned, the memory address will be nil
-	var userID *int
-	var userName *string
-	var userAge *float64
-	log.Println(userID, userName, userAge)
+	fmt.Println("All trucks processed successfully")
 }
